@@ -8,6 +8,7 @@
 class Demo:
     def __init__(self):
         self.a = "hello world"
+        # 获取类或者对象的属性，返回字典类型
         print(self.__dict__)
 		# {'a': 'hello world'}       
 ```
