@@ -66,12 +66,15 @@ class Demo:
       p = People()
       p.eat("rice")
       # p.drink("rice")
+
   ```
 
 
-### mateclass
 
-http://c.biancheng.net/view/2293.html
+
+### metaclass
+
+[参考链接](http://c.biancheng.net/view/2293.html)
 
 
 
@@ -84,9 +87,13 @@ http://c.biancheng.net/view/2293.html
   * 可以使用 类名.方法名调用
   * 需要使用 cls 关键词
 
+
+
 ### property
 
-```
+class DataSet(object):
+
+```python
 class DataSet(object):
     @property
     def method_with_property(self):
@@ -96,7 +103,9 @@ class DataSet(object):
 l = DataSet()
 # proper 在调用的时候不使用 ()，直接使用函数名称即可
 print(l.method_with_property)
+
 ```
+
 
 
 
@@ -116,7 +125,6 @@ num_list = [-1, 1, 2, 3, 4, 5, 2, 6]
 # 引用删除
 # index 删除，index 大于 list 长度时，会抛出越界错误
 del num_list[1]
-
 ```
 
 
@@ -153,6 +161,8 @@ del num_list[1]
 
 
 * 分代回收
+
+
 
 
 # 设计模式
@@ -225,4 +235,68 @@ Innodb 默认使用的是**行锁**，行锁是基于**索引**，若想加行�
   * 影响吞吐量，适合应用在**写**居多的场景下
 * 乐观锁
   * 乐观锁是为了避免悲观锁的弊端出现，适合应用在读**居**多的场景
+
+
+
+
+## load data local file
+
+加载本地文件的形式生成数据表
+
+```Python
+import codecs
+import os
+import time
+
+import pymysql
+
+host = '192.168.1.1'
+user = 'root'
+passwd = 'password'
+db = 'student'
+port = 3306
+sql_info = [host, user, passwd, db, port]
+t_test_table_old = 'students_score_v1'
+t_test_table_new = 'students_score_v2'
+
+
+def load_mysql(filename, columns, tablename, args, str_sql=''):
+    s = time.time()
+    host, user, passwd, db, port = args
+    conn = pymysql.Connection(host=host, user=user, passwd=passwd, db=db, port=port, charset='utf8', local_infile=1)
+    cur = conn.cursor()
+    load = "load data local infile '%s' ignore into table %s fields terminated by '%s' lines terminated by '%s' %s %s"
+    cur.execute(load % (filename, tablename, "|!|", "\n", columns, str_sql))
+    conn.commit()
+    conn.close()
+    print("*****[%s] load completed! Use Time:%s" % (tablename, (time.time() - s)))
+
+
+def get_data():
+    conn = pymysql.Connection(user=user, password=passwd, host=host, database=db, port=port)
+
+    cursor = conn.cursor()
+    cursor.execute(f'drop table if exists {t_test_table_new}')
+    cursor.execute(f"create table {t_test_table_new} like {t_test_table_old}")
+    cursor.execute(f'select * from {t_test_table_old} limit 100')
+    
+    format_str = ("%s|!|" * 5)[:-3] + "\n"
+    res = []
+    for id, name, grade, subject, score in cursor.fetchall():
+        res.append(format_str % (id, name, grade, subject, score))
+
+    with codecs.open('%s.txt' % t_test_table_new, 'a+', 'utf8') as wfp:
+        wfp.writelines(res)
+
+    conn.close()
+
+    columns = '(id, name, grade, subject, score)'
+    load_mysql('%s.txt' % t_test_table_new, columns, t_test_table_new, sql_info)
+    os.remove('%s.txt' % t_test_table_new)
+
+
+if __name__ == '__main__':
+    get_data()
+
+```
 
